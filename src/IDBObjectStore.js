@@ -251,7 +251,7 @@ IDBObjectStore.prototype.__insertData = function (tx, encoded, value, primaryKey
         const sqlValues = [];
         if (primaryKey !== undefined) {
             Key.validate(primaryKey);
-            sqlStart.push('key,');
+            sqlStart.push(util.quote('key'), ',');
             sqlEnd.push('?,');
             sqlValues.push(Key.encode(primaryKey));
         }
@@ -414,7 +414,7 @@ IDBObjectStore.prototype.clear = function () {
 
 IDBObjectStore.prototype.count = function (key) {
     if (util.instanceOf(key, IDBKeyRange)) {
-        return new IDBCursor(key, 'next', this, this, 'key', 'value', true).__req;
+        return new IDBCursorWithValue(key, 'next', this, this, 'key', 'value', true).__req;
     } else {
         const me = this;
         let hasKey = false;
@@ -439,11 +439,11 @@ IDBObjectStore.prototype.count = function (key) {
 };
 
 IDBObjectStore.prototype.openCursor = function (range, direction) {
-    return new IDBCursor(range, direction, this, this, 'key', 'value').__req;
+    return new IDBCursorWithValue(range, direction, this, this, 'key', 'value').__req;
 };
 
 IDBObjectStore.prototype.openKeyCursor = function (range, direction) {
-    return new IDBCursorWithValue(range, direction, this, this, 'key', 'key').__req;
+    return new IDBCursor(range, direction, this, this, 'key', 'key').__req;
 };
 
 IDBObjectStore.prototype.index = function (indexName) {
@@ -507,6 +507,10 @@ IDBObjectStore.prototype.deleteIndex = function (indexName) {
     this.transaction.__assertVersionChange();
 
     IDBIndex.__deleteIndex(this, index);
+};
+
+IDBObjectStore.prototype.toString = function () {
+    return '[object IDBObjectStore]';
 };
 
 export default IDBObjectStore;

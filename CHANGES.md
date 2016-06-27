@@ -71,6 +71,10 @@
 - Fix: Throw `TypeError` if call to `update()` has no arguments
 - Fix: Allow empty string key path to be utilized when validating
     `add`/`put` input
+- Fix: Add more precise `toString` behaviors
+- Fix: Make `key`/`primaryKey`/`direction`/`source`/`value` properties
+    of `IDBCursor` readonly
+- Fix: Avoid iterating unique values
 - Feature: Support Node cleanly via `websql` SQLite3 library
 - Feature: Add `IDBObjectStore.openKeyCursor`
 - Feature: Add `IDBKeyRange.includes()` with test

@@ -32,8 +32,11 @@ function IDBCursor (range, direction, store, source, keyColumnName, valueColumnN
         throw new TypeError(direction + 'is not a valid cursor direction');
     }
 
-    this.source = source;
-    this.direction = direction || 'next';
+    Object.defineProperties(this, {
+        // Babel is not respecting default writable false here, so make explicit
+        source: {writable: false, value: source},
+        direction: {writable: false, value: direction || 'next'}
+    });
     this.key = undefined;
     this.primaryKey = undefined;
     this.__store = store;
@@ -267,9 +270,12 @@ IDBCursor.prototype.__onsuccess = function (success) {
         if (me.__count) {
             success(value, me.__req);
         } else {
-            me.key = key === undefined ? null : key;
-            me.value = value === undefined ? null : value;
-            me.primaryKey = primaryKey === undefined ? null : primaryKey;
+            Object.defineProperties(me, {
+                // Babel is not respecting default writable false here, so make explicit
+                key: {writable: false, value: key === undefined ? null : key},
+                primaryKey: {writable: false, value: primaryKey === undefined ? null : primaryKey}
+            });
+            me.__value = value === undefined ? null : value;
             const result = key === undefined ? null : me;
             success(result, me.__req);
         }
@@ -330,6 +336,18 @@ IDBCursor.prototype['continue'] = function (key) {
             me.__prefetchedIndex++;
             if (me.__prefetchedIndex < me.__prefetchedData.length) {
                 me.__decode(me.__prefetchedData.item(me.__prefetchedIndex), function (k, val, primKey) {
+                    if (me.__unique) {
+                        Sca.encode(val, function (encVal) {
+                            Sca.encode(me.value, function (encMeVal) {
+                                if (encVal === encMeVal) {
+                                    cursorContinue(tx, args, success, error);
+                                    return;
+                                }
+                                me.__onsuccess(success)(k, val, primKey);
+                            });
+                        });
+                        return;
+                    }
                     if (key !== undefined && k !== key) {
                         cursorContinue(tx, args, success, error);
                         return;
@@ -462,9 +480,6 @@ Object.defineProperty(IDBCursorWithValue.prototype, 'value', {
     configurable: true,
     get: function () {
         return this.__value;
-    },
-    set: function (val) {
-        this.__value = val;
     }
 });
 

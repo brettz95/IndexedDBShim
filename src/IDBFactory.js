@@ -254,5 +254,9 @@ function cmp (key1, key2) {
 
 IDBFactory.prototype.cmp = cmp;
 
+IDBFactory.prototype.toString = function () {
+    return '[object IDBFactory]';
+};
+
 const shimIndexedDB = new IDBFactory();
 export {IDBFactory, cmp, shimIndexedDB};

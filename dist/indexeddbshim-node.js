@@ -16843,8 +16843,11 @@ function IDBCursor(range, direction, store, source, keyColumnName, valueColumnNa
         throw new TypeError(direction + 'is not a valid cursor direction');
     }
 
-    this.source = source;
-    this.direction = direction || 'next';
+    Object.defineProperties(this, {
+        // Babel is not respecting default writable false here, so make explicit
+        source: { writable: false, value: source },
+        direction: { writable: false, value: direction || 'next' }
+    });
     this.key = undefined;
     this.primaryKey = undefined;
     this.__store = store;
@@ -17082,9 +17085,12 @@ IDBCursor.prototype.__onsuccess = function (success) {
         if (me.__count) {
             success(value, me.__req);
         } else {
-            me.key = key === undefined ? null : key;
-            me.value = value === undefined ? null : value;
-            me.primaryKey = primaryKey === undefined ? null : primaryKey;
+            Object.defineProperties(me, {
+                // Babel is not respecting default writable false here, so make explicit
+                key: { writable: false, value: key === undefined ? null : key },
+                primaryKey: { writable: false, value: primaryKey === undefined ? null : primaryKey }
+            });
+            me.__value = value === undefined ? null : value;
             var result = key === undefined ? null : me;
             success(result, me.__req);
         }
@@ -17141,6 +17147,18 @@ IDBCursor.prototype['continue'] = function (key) {
             me.__prefetchedIndex++;
             if (me.__prefetchedIndex < me.__prefetchedData.length) {
                 me.__decode(me.__prefetchedData.item(me.__prefetchedIndex), function (k, val, primKey) {
+                    if (me.__unique) {
+                        _Sca2.default.encode(val, function (encVal) {
+                            _Sca2.default.encode(me.value, function (encMeVal) {
+                                if (encVal === encMeVal) {
+                                    cursorContinue(tx, args, success, error);
+                                    return;
+                                }
+                                me.__onsuccess(success)(k, val, primKey);
+                            });
+                        });
+                        return;
+                    }
                     if (key !== undefined && k !== key) {
                         cursorContinue(tx, args, success, error);
                         return;
@@ -17283,9 +17301,6 @@ Object.defineProperty(IDBCursorWithValue.prototype, 'value', {
     configurable: true,
     get: function get() {
         return this.__value;
-    },
-    set: function set(val) {
-        this.__value = val;
     }
 });
 
@@ -17730,6 +17745,10 @@ function cmp(key1, key2) {
 
 IDBFactory.prototype.cmp = cmp;
 
+IDBFactory.prototype.toString = function () {
+    return '[object IDBFactory]';
+};
+
 var shimIndexedDB = new IDBFactory();
 exports.IDBFactory = IDBFactory;
 exports.cmp = cmp;
@@ -17957,7 +17976,7 @@ IDBIndex.prototype.__fetchIndexData = function (key, opType) {
  * @returns {IDBRequest}
  */
 IDBIndex.prototype.openCursor = function (range, direction) {
-    return new _IDBCursor.IDBCursor(range, direction, this.objectStore, this, '_' + this.name, 'value').__req;
+    return new _IDBCursor.IDBCursorWithValue(range, direction, this.objectStore, this, '_' + this.name, 'value').__req;
 };
 
 /**
@@ -17967,7 +17986,7 @@ IDBIndex.prototype.openCursor = function (range, direction) {
  * @returns {IDBRequest}
  */
 IDBIndex.prototype.openKeyCursor = function (range, direction) {
-    return new _IDBCursor.IDBCursorWithValue(range, direction, this.objectStore, this, '_' + this.name, 'key').__req;
+    return new _IDBCursor.IDBCursor(range, direction, this.objectStore, this, '_' + this.name, 'key').__req;
 };
 
 IDBIndex.prototype.get = function (key) {
@@ -17992,9 +18011,13 @@ IDBIndex.prototype.count = function (key) {
         return this.__fetchIndexData('count');
     }
     if (util.instanceOf(key, _IDBKeyRange2.default)) {
-        return new _IDBCursor.IDBCursor(key, 'next', this.objectStore, this, '_' + this.name, 'value', true).__req;
+        return new _IDBCursor.IDBCursorWithValue(key, 'next', this.objectStore, this, '_' + this.name, 'value', true).__req;
     }
     return this.__fetchIndexData(key, 'count');
+};
+
+IDBIndex.prototype.toString = function () {
+    return '[object IDBIndex]';
 };
 
 Object.defineProperty(IDBIndex, Symbol.hasInstance, {
@@ -18616,7 +18639,7 @@ IDBObjectStore.prototype.count = function (key) {
     var _this2 = this;
 
     if (util.instanceOf(key, _IDBKeyRange.IDBKeyRange)) {
-        return new _IDBCursor.IDBCursor(key, 'next', this, this, 'key', 'value', true).__req;
+        return new _IDBCursor.IDBCursorWithValue(key, 'next', this, this, 'key', 'value', true).__req;
     } else {
         var _ret2 = function () {
             var me = _this2;
@@ -18647,11 +18670,11 @@ IDBObjectStore.prototype.count = function (key) {
 };
 
 IDBObjectStore.prototype.openCursor = function (range, direction) {
-    return new _IDBCursor.IDBCursor(range, direction, this, this, 'key', 'value').__req;
+    return new _IDBCursor.IDBCursorWithValue(range, direction, this, this, 'key', 'value').__req;
 };
 
 IDBObjectStore.prototype.openKeyCursor = function (range, direction) {
-    return new _IDBCursor.IDBCursorWithValue(range, direction, this, this, 'key', 'key').__req;
+    return new _IDBCursor.IDBCursor(range, direction, this, this, 'key', 'key').__req;
 };
 
 IDBObjectStore.prototype.index = function (indexName) {
@@ -18717,6 +18740,10 @@ IDBObjectStore.prototype.deleteIndex = function (indexName) {
     _IDBIndex.IDBIndex.__deleteIndex(this, index);
 };
 
+IDBObjectStore.prototype.toString = function () {
+    return '[object IDBObjectStore]';
+};
+
 exports.default = IDBObjectStore;
 module.exports = exports['default'];
 
@@ -18726,6 +18753,8 @@ module.exports = exports['default'];
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
@@ -18738,12 +18767,23 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  * http://dvcs.w3.org/hg/IndexedDB/raw-file/tip/Overview.html#request-api
  */
 
-var IDBRequest = function IDBRequest() {
-    _classCallCheck(this, IDBRequest);
+var IDBRequest = function () {
+    function IDBRequest() {
+        _classCallCheck(this, IDBRequest);
 
-    this.onsuccess = this.onerror = this.result = this.error = this.source = this.transaction = null;
-    this.readyState = 'pending';
-};
+        this.onsuccess = this.onerror = this.result = this.error = this.source = this.transaction = null;
+        this.readyState = 'pending';
+    }
+
+    _createClass(IDBRequest, [{
+        key: 'toString',
+        value: function toString() {
+            return '[object IDBRequest]';
+        }
+    }]);
+
+    return IDBRequest;
+}();
 
 /**
  * The IDBOpenDBRequest called when a database is opened
@@ -18761,6 +18801,13 @@ var IDBOpenDBRequest = function (_IDBRequest) {
         _this.onblocked = _this.onupgradeneeded = null;
         return _this;
     }
+
+    _createClass(IDBOpenDBRequest, [{
+        key: 'toString',
+        value: function toString() {
+            return '[object IDBOpenDBRequest]';
+        }
+    }]);
 
     return IDBOpenDBRequest;
 }(IDBRequest);

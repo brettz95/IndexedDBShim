@@ -187,7 +187,7 @@ IDBIndex.prototype.__fetchIndexData = function (key, opType) {
  * @returns {IDBRequest}
  */
 IDBIndex.prototype.openCursor = function (range, direction) {
-    return new IDBCursor(range, direction, this.objectStore, this, '_' + this.name, 'value').__req;
+    return new IDBCursorWithValue(range, direction, this.objectStore, this, '_' + this.name, 'value').__req;
 };
 
 /**
@@ -197,7 +197,7 @@ IDBIndex.prototype.openCursor = function (range, direction) {
  * @returns {IDBRequest}
  */
 IDBIndex.prototype.openKeyCursor = function (range, direction) {
-    return new IDBCursorWithValue(range, direction, this.objectStore, this, '_' + this.name, 'key').__req;
+    return new IDBCursor(range, direction, this.objectStore, this, '_' + this.name, 'key').__req;
 };
 
 IDBIndex.prototype.get = function (key) {
@@ -222,9 +222,13 @@ IDBIndex.prototype.count = function (key) {
         return this.__fetchIndexData('count');
     }
     if (util.instanceOf(key, IDBKeyRange)) {
-        return new IDBCursor(key, 'next', this.objectStore, this, '_' + this.name, 'value', true).__req;
+        return new IDBCursorWithValue(key, 'next', this.objectStore, this, '_' + this.name, 'value', true).__req;
     }
     return this.__fetchIndexData(key, 'count');
+};
+
+IDBIndex.prototype.toString = function () {
+    return '[object IDBIndex]';
 };
 
 Object.defineProperty(IDBIndex, Symbol.hasInstance, {

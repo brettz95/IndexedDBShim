@@ -7,6 +7,9 @@ class IDBRequest {
         this.onsuccess = this.onerror = this.result = this.error = this.source = this.transaction = null;
         this.readyState = 'pending';
     }
+    toString () {
+        return '[object IDBRequest]';
+    }
 }
 
 /**
@@ -16,6 +19,9 @@ class IDBOpenDBRequest extends IDBRequest {
     constructor () {
         super();
         this.onblocked = this.onupgradeneeded = null;
+    }
+    toString () {
+        return '[object IDBOpenDBRequest]';
     }
 }
 
