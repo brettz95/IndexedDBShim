@@ -10361,7 +10361,6 @@ IDBIndex.__createIndex = function (store, index) {
                                 var value = _Sca2.default.decode(data.rows.item(i).value);
                                 var indexKey = _Key2.default.evaluateKeyPathOnValue(value, index.keyPath);
                                 indexKey = _Key2.default.encode(indexKey, index.multiEntry);
-
                                 tx.executeSql('UPDATE ' + util.quote('s_' + store.name) + ' SET ' + util.quote('_' + index.name) + ' = ? WHERE key = ?', [indexKey, data.rows.item(i).key], function (tx, data) {
                                     addIndexEntry(i + 1);
                                 }, error);
@@ -10386,7 +10385,7 @@ IDBIndex.__createIndex = function (store, index) {
             _cfg2.default.DEBUG && console.log(sql);
             tx.executeSql(sql, [], applyIndex, error);
         }
-    });
+    }, undefined, true);
 };
 
 /**
@@ -10409,7 +10408,7 @@ IDBIndex.__deleteIndex = function (store, index) {
 
         // Update the object store's index list
         IDBIndex.__updateIndexList(store, tx, success, error);
-    });
+    }, undefined, true);
 };
 
 /**
@@ -10810,7 +10809,7 @@ IDBObjectStore.__createObjectStore = function (db, store) {
                 success(store);
             }, error);
         }, error);
-    });
+    }, undefined, true);
 };
 
 /**
@@ -10841,7 +10840,7 @@ IDBObjectStore.__deleteObjectStore = function (db, store) {
                 }, error);
             }
         });
-    });
+    }, undefined, true);
 };
 
 /**
@@ -10977,7 +10976,7 @@ IDBObjectStore.prototype.__insertData = function (tx, encoded, value, primaryKey
         var sqlValues = [];
         if (primaryKey !== undefined) {
             _Key2.default.validate(primaryKey);
-            sqlStart.push('key,');
+            sqlStart.push(util.quote('key'), ',');
             sqlEnd.push('?,');
             sqlValues.push(_Key2.default.encode(primaryKey));
         }
@@ -11508,10 +11507,35 @@ IDBTransaction.prototype.__createRequest = function () {
  * @returns {IDBRequest}
  * @protected
  */
-IDBTransaction.prototype.__addToTransactionQueue = function (callback, args) {
+IDBTransaction.prototype.__addToTransactionQueue = function (callback, args, priority) {
     var request = this.__createRequest();
-    this.__pushToQueue(request, callback, args);
+    if (priority) this.__pushToPriorityPosition(request, callback, args);else this.__pushToQueue(request, callback, args);
     return request;
+};
+
+/**
+ * Adds an IDBRequest to the transaction queue with added priority (for simulating synchronous behavior)
+ * @param {IDBRequest} request
+ * @param {function} callback
+ * @param {*} args
+ * @protected
+ */
+IDBTransaction.prototype.__pushToPriorityPosition = function (request, callback, args) {
+    this.__assertActive();
+    var params = {
+        'op': callback,
+        'args': args,
+        'req': request,
+        'priority': true
+    };
+    var idx = this.__requests.findIndex(function (req) {
+        return !req.priority;
+    });
+    if (idx < 0) {
+        this.__requests.push(params);
+    } else {
+        this.__requests.splice(idx, 0, params);
+    }
 };
 
 /**

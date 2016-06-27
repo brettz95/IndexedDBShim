@@ -161,10 +161,34 @@ IDBTransaction.prototype.__createRequest = function () {
  * @returns {IDBRequest}
  * @protected
  */
-IDBTransaction.prototype.__addToTransactionQueue = function (callback, args) {
+IDBTransaction.prototype.__addToTransactionQueue = function (callback, args, priority) {
     const request = this.__createRequest();
-    this.__pushToQueue(request, callback, args);
+    if (priority) this.__pushToPriorityPosition(request, callback, args);
+    else this.__pushToQueue(request, callback, args);
     return request;
+};
+
+/**
+ * Adds an IDBRequest to the transaction queue with added priority (for simulating synchronous behavior)
+ * @param {IDBRequest} request
+ * @param {function} callback
+ * @param {*} args
+ * @protected
+ */
+IDBTransaction.prototype.__pushToPriorityPosition = function (request, callback, args) {
+    this.__assertActive();
+    const params = {
+        'op': callback,
+        'args': args,
+        'req': request,
+        'priority': true
+    };
+    const idx = this.__requests.findIndex((req) => !req.priority);
+    if (idx < 0) {
+        this.__requests.push(params);
+    } else {
+        this.__requests.splice(idx, 0, params);
+    }
 };
 
 /**

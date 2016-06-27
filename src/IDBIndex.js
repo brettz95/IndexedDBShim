@@ -74,7 +74,6 @@ IDBIndex.__createIndex = function (store, index) {
                                 const value = Sca.decode(data.rows.item(i).value);
                                 let indexKey = Key.evaluateKeyPathOnValue(value, index.keyPath);
                                 indexKey = Key.encode(indexKey, index.multiEntry);
-
                                 tx.executeSql('UPDATE ' + util.quote('s_' + store.name) + ' SET ' + util.quote('_' + index.name) + ' = ? WHERE key = ?', [indexKey, data.rows.item(i).key], function (tx, data) {
                                     addIndexEntry(i + 1);
                                 }, error);
@@ -99,7 +98,7 @@ IDBIndex.__createIndex = function (store, index) {
             CFG.DEBUG && console.log(sql);
             tx.executeSql(sql, [], applyIndex, error);
         }
-    });
+    }, undefined, true);
 };
 
 /**
@@ -122,7 +121,7 @@ IDBIndex.__deleteIndex = function (store, index) {
 
         // Update the object store's index list
         IDBIndex.__updateIndexList(store, tx, success, error);
-    });
+    }, undefined, true);
 };
 
 /**

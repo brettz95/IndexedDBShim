@@ -83,7 +83,7 @@ IDBObjectStore.__createObjectStore = function (db, store) {
                 success(store);
             }, error);
         }, error);
-    });
+    }, undefined, true);
 };
 
 /**
@@ -114,7 +114,7 @@ IDBObjectStore.__deleteObjectStore = function (db, store) {
                 }, error);
             }
         });
-    });
+    }, undefined, true);
 };
 
 /**
