@@ -36,6 +36,7 @@ function IDBObjectStore (storeProperties, transaction) {
             }
         }
     }
+    this.__pendingQueue = [];
 }
 
 /**
@@ -210,10 +211,33 @@ IDBObjectStore.prototype.__deriveKey = function (tx, value, key, success, failur
 IDBObjectStore.prototype.__insertData = function (tx, encoded, value, primaryKey, passedKey, addedAutoIncKeyPathKey, success, error) {
     const me = this;
     const paramMap = {};
+    // If indexes are pending to be added to the database, we need to wait
+    //   until they are ready or attempts to add to the database will be
+    //   bereft of index data and thus queries against them may fail
+    if (me.indexNames.some((indexName) => me.__indexes[indexName].__pending)) {
+        if (!this.onresume) {
+            this.onresume = (e) => {
+                // Confirm all are no longer pending since any pending
+                //     indexes will cause a problem with inserts
+                if (this.indexNames.every((indexName) => {
+                    const index = me.__indexes[indexName];
+                    return !index.__pending;
+                })) {
+                    CFG.DEBUG && console.log('Resuming pending queue');
+                    this.__pendingQueue.forEach((args, i) => {
+                        this.__insertData(...args);
+                        this.__pendingQueue.splice(i, 1);
+                    });
+                } else CFG.DEBUG && console.log('Cannot resume pending queue with some indexes still pending');
+            };
+        }
+        this.__pendingQueue.push([tx, encoded, value, primaryKey, passedKey, addedAutoIncKeyPathKey, success, error]);
+        return;
+    }
     const indexPromises = me.indexNames.map((indexName) => {
+        const index = me.__indexes[indexName];
         return new SyncPromise((resolve, reject) => {
-            const index = me.__indexes[indexName];
-            if (index.__pending) {
+            if (index.__deleted) {
                 resolve();
                 return;
             }
@@ -274,7 +298,7 @@ IDBObjectStore.prototype.__insertData = function (tx, encoded, value, primaryKey
 
         const sql = sqlStart.join(' ') + sqlEnd.join(' ');
 
-        CFG.DEBUG && console.log('SQL for adding', sql, sqlValues);
+        console.log('SQL for adding', sql, sqlValues);
         tx.executeSql(sql, sqlValues, function (tx, data) {
             Sca.encode(primaryKey, function (primaryKey) {
                 primaryKey = Sca.decode(primaryKey);

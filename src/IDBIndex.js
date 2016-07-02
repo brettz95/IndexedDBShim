@@ -1,5 +1,6 @@
 import {createDOMException} from './DOMException.js';
 import {IDBCursor, IDBCursorWithValue} from './IDBCursor.js';
+import {createEvent} from './Event.js';
 import * as util from './util.js';
 import Key from './Key.js';
 import {setSQLForRange, IDBKeyRange} from './IDBKeyRange.js';
@@ -86,6 +87,9 @@ IDBIndex.__createIndex = function (store, index) {
                             }
                         } else {
                             delete index.__pending;
+                            const e = createEvent('resume');
+                            e.indexName = index.name;
+                            util.callback('onresume', store, e);
                             success(store);
                         }
                     }
@@ -279,6 +283,8 @@ function executeFetchIndexData (index, hasKey, encodedKey, opType, multiChecks, 
             for (let i = 0; i < data.rows.length; i++) {
                 const row = data.rows.item(i);
                 const rowKey = Key.decode(row['_' + index.name]);
+                console.log(row);
+                console.log(rowKey);
                 if (hasKey && (
                     (multiChecks && encodedKey.some((check) => rowKey.includes(check))) || // More precise than our SQL
                     Key.isMultiEntryMatch(encodedKey, row['_' + index.name]))) {
@@ -298,8 +304,12 @@ function executeFetchIndexData (index, hasKey, encodedKey, opType, multiChecks, 
         if (opType === 'count') {
             success(recordCount);
         } else if (recordCount === 0) {
+            console.log('count 0');
             success(undefined);
         } else if (opType === 'key') {
+            console.log('op type key');
+            console.log(record.key);
+            console.log(Key.decode(record.key));
             success(Key.decode(record.key));
         } else { // when opType is value
             success(Sca.decode(record.value));

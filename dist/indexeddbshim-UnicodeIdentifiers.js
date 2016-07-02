@@ -10327,6 +10327,8 @@ var _DOMException = require('./DOMException.js');
 
 var _IDBCursor = require('./IDBCursor.js');
 
+var _Event = require('./Event.js');
+
 var _util = require('./util.js');
 
 var util = _interopRequireWildcard(_util);
@@ -10431,6 +10433,9 @@ IDBIndex.__createIndex = function (store, index) {
                             }
                         } else {
                             delete index.__pending;
+                            var e = (0, _Event.createEvent)('resume');
+                            e.indexName = index.name;
+                            util.callback('onresume', store, e);
                             success(store);
                         }
                     }
@@ -10631,6 +10636,8 @@ function executeFetchIndexData(index, hasKey, encodedKey, opType, multiChecks, s
             var _loop = function _loop(i) {
                 var row = data.rows.item(i);
                 var rowKey = _Key2.default.decode(row['_' + index.name]);
+                console.log(row);
+                console.log(rowKey);
                 if (hasKey && (multiChecks && encodedKey.some(function (check) {
                     return rowKey.includes(check);
                 }) || // More precise than our SQL
@@ -10655,8 +10662,12 @@ function executeFetchIndexData(index, hasKey, encodedKey, opType, multiChecks, s
         if (opType === 'count') {
             success(recordCount);
         } else if (recordCount === 0) {
+            console.log('count 0');
             success(undefined);
         } else if (opType === 'key') {
+            console.log('op type key');
+            console.log(record.key);
+            console.log(_Key2.default.decode(record.key));
             success(_Key2.default.decode(record.key));
         } else {
             // when opType is value
@@ -10702,7 +10713,7 @@ exports.executeFetchIndexData = executeFetchIndexData;
 exports.IDBIndex = IDBIndex;
 exports.default = IDBIndex;
 
-},{"./DOMException.js":306,"./IDBCursor.js":308,"./IDBKeyRange.js":312,"./Key.js":316,"./Sca.js":317,"./cfg.js":320,"./util.js":323}],312:[function(require,module,exports){
+},{"./DOMException.js":306,"./Event.js":307,"./IDBCursor.js":308,"./IDBKeyRange.js":312,"./Key.js":316,"./Sca.js":317,"./cfg.js":320,"./util.js":323}],312:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10876,6 +10887,7 @@ function IDBObjectStore(storeProperties, transaction) {
             }
         }
     }
+    this.__pendingQueue = [];
 }
 
 /**
@@ -11053,10 +11065,35 @@ IDBObjectStore.prototype.__insertData = function (tx, encoded, value, primaryKey
 
     var me = this;
     var paramMap = {};
+    // If indexes are pending to be added to the database, we need to wait
+    //   until they are ready or attempts to add to the database will be
+    //   bereft of index data and thus queries against them may fail
+    if (me.indexNames.some(function (indexName) {
+        return me.__indexes[indexName].__pending;
+    })) {
+        if (!this.onresume) {
+            this.onresume = function (e) {
+                // Confirm all are no longer pending since any pending
+                //     indexes will cause a problem with inserts
+                if (_this.indexNames.every(function (indexName) {
+                    var index = me.__indexes[indexName];
+                    return !index.__pending;
+                })) {
+                    _cfg2.default.DEBUG && console.log('Resuming pending queue');
+                    _this.__pendingQueue.forEach(function (args, i) {
+                        _this.__insertData.apply(_this, _toConsumableArray(args));
+                        _this.__pendingQueue.splice(i, 1);
+                    });
+                } else _cfg2.default.DEBUG && console.log('Cannot resume pending queue with some indexes still pending');
+            };
+        }
+        this.__pendingQueue.push([tx, encoded, value, primaryKey, passedKey, addedAutoIncKeyPathKey, success, error]);
+        return;
+    }
     var indexPromises = me.indexNames.map(function (indexName) {
+        var index = me.__indexes[indexName];
         return new _syncPromise2.default(function (resolve, reject) {
-            var index = me.__indexes[indexName];
-            if (index.__pending) {
+            if (index.__deleted) {
                 resolve();
                 return;
             }
@@ -11114,7 +11151,7 @@ IDBObjectStore.prototype.__insertData = function (tx, encoded, value, primaryKey
 
         var sql = sqlStart.join(' ') + sqlEnd.join(' ');
 
-        _cfg2.default.DEBUG && console.log('SQL for adding', sql, sqlValues);
+        console.log('SQL for adding', sql, sqlValues);
         tx.executeSql(sql, sqlValues, function (tx, data) {
             _Sca2.default.encode(primaryKey, function (primaryKey) {
                 primaryKey = _Sca2.default.decode(primaryKey);
