@@ -157,7 +157,7 @@ IDBObjectStore.prototype.__validateKeyAndValue = function (value, key) {
             }
             throw createDOMException('DataError', 'Could not evaluate a key from keyPath');
         }
-        Key.convertValueToKey(key);
+        key = Key.convertValueToKey(key);
     } else {
         if (key === undefined) {
             if (this.autoIncrement) {
@@ -166,7 +166,7 @@ IDBObjectStore.prototype.__validateKeyAndValue = function (value, key) {
             }
             throw createDOMException('DataError', 'The object store uses out-of-line keys and has no key generator and the key parameter was not provided. ', this);
         }
-        Key.convertValueToKey(key);
+        key = Key.convertValueToKey(key);
         util.throwIfNotClonable(value, 'The data to be stored could not be cloned by the internal structured cloning algorithm.');
     }
 
@@ -285,7 +285,7 @@ IDBObjectStore.prototype.__insertData = function (tx, encoded, value, primaryKey
         const sqlEnd = [' VALUES ('];
         const insertSqlValues = [];
         if (primaryKey !== undefined) {
-            Key.convertValueToKey(primaryKey);
+            primaryKey = Key.convertValueToKey(primaryKey);
             sqlStart.push(util.quote('key'), ',');
             sqlEnd.push('?,');
             insertSqlValues.push(Key.encode(primaryKey));
@@ -418,7 +418,7 @@ IDBObjectStore.prototype.put = function (value, key) {
             me.__deriveKey(tx, value, key, function (primaryKey, useNewForAutoInc) {
                 Sca.encode(value, function (encoded) {
                     // First try to delete if the record exists
-                    Key.convertValueToKey(primaryKey);
+                    primaryKey = Key.convertValueToKey(primaryKey);
                     const sql = 'DELETE FROM ' + util.escapeStore(me.name) + ' WHERE key = ?';
                     const encodedPrimaryKey = Key.encode(primaryKey);
                     tx.executeSql(sql, [encodedPrimaryKey], function (tx, data) {
@@ -483,7 +483,7 @@ IDBObjectStore.prototype.__get = function (range, getKey, getAll, count) {
                 ret = [];
                 if (getKey) {
                     for (let i = 0; i < data.rows.length; i++) {
-                        // Key.convertValueToKey(data.rows.item(i).key); // Already validated before storage
+                        // const k = Key.convertValueToKey(data.rows.item(i).key); // Already validated before storage
                         ret.push(
                             Key.decode(data.rows.item(i).key, false)
                         );
@@ -620,7 +620,7 @@ IDBObjectStore.prototype.count = function (key) {
 
         // key is optional
         if (hasKey) {
-            Key.convertValueToKey(key);
+            key = Key.convertValueToKey(key);
         }
 
         return me.transaction.__addToTransactionQueue(function objectStoreCount (tx, args, success, error) {

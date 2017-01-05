@@ -98,17 +98,17 @@ IDBCursor.prototype.__findBasic = function (key, primaryKey, tx, success, error,
 
     if (primaryKey !== undefined) {
         sql.push('AND', quotedKey, op + '= ?');
-        // Key.convertValueToKey(primaryKey); // Already checked by `continuePrimaryKey`
+        // primaryKey = Key.convertValueToKey(primaryKey); // Already checked by `continuePrimaryKey`
         sqlValues.push(Key.encode(primaryKey));
     }
     if (key !== undefined) {
         sql.push('AND', quotedKeyColumnName, op + '= ?');
-        Key.convertValueToKey(key);
+        key = Key.convertValueToKey(key);
         sqlValues.push(Key.encode(key));
     } else if (continueCall && me.__key !== undefined) {
         sql.push('AND', quotedKeyColumnName, op + ' ?');
-        Key.convertValueToKey(me.__key);
-        sqlValues.push(Key.encode(me.__key));
+        const k = Key.convertValueToKey(me.__key);
+        sqlValues.push(Key.encode(k));
     }
 
     if (!me.__count) {
@@ -178,17 +178,17 @@ IDBCursor.prototype.__findMultiEntry = function (key, primaryKey, tx, success, e
 
     if (primaryKey !== undefined) {
         sql.push('AND', quotedKey, op + '= ?');
-        // Key.convertValueToKey(primaryKey); // Already checked by `continuePrimaryKey`
+        // primaryKey = Key.convertValueToKey(primaryKey); // Already checked by `continuePrimaryKey`
         sqlValues.push(Key.encode(primaryKey));
     }
     if (key !== undefined) {
         sql.push('AND', quotedKeyColumnName, op + '= ?');
-        Key.convertValueToKey(key);
+        key = Key.convertValueToKey(key);
         sqlValues.push(Key.encode(key));
     } else if (me.__key !== undefined) {
         sql.push('AND', quotedKeyColumnName, op + ' ?');
-        Key.convertValueToKey(me.__key);
-        sqlValues.push(Key.encode(me.__key));
+        const k = Key.convertValueToKey(me.__key);
+        sqlValues.push(Key.encode(k));
     }
 
     if (!me.__count) {
@@ -349,7 +349,7 @@ IDBCursor.prototype.__continue = function (key, advanceContinue) {
     if (!me.__gotValue && !advanceContinue) {
         throw createDOMException('InvalidStateError', 'The cursor is being iterated or has iterated past its end.');
     }
-    if (key !== undefined) Key.convertValueToKey(key);
+    if (key !== undefined) key = Key.convertValueToKey(key);
 
     if (key !== undefined) {
         const cmpResult = cmp(key, me.key);
@@ -438,8 +438,8 @@ IDBCursor.prototype.continuePrimaryKey = function (key, primaryKey) {
     if (!me.__gotValue) {
         throw createDOMException('InvalidStateError', 'The cursor is being iterated or has iterated past its end.');
     }
-    Key.convertValueToKey(key);
-    Key.convertValueToKey(primaryKey);
+    key = Key.convertValueToKey(key);
+    primaryKey = Key.convertValueToKey(primaryKey);
 
     const cmpResult = cmp(key, me.key);
     if (
@@ -503,13 +503,13 @@ IDBCursor.prototype.update = function (valueToUpdate) {
     }
     return me.__store.transaction.__addToTransactionQueue(function cursorUpdate (tx, args, success, error) {
         const key = me.key;
-        const primaryKey = me.primaryKey;
+        let primaryKey = me.primaryKey;
         const store = me.__store;
         Sca.encode(valueToUpdate, function (encoded) {
             const value = Sca.decode(encoded);
             Sca.encode(value, function (encoded) {
                 // First try to delete if the record exists
-                Key.convertValueToKey(primaryKey);
+                primaryKey = Key.convertValueToKey(primaryKey);
                 const sql = 'DELETE FROM ' + util.escapeStore(store.name) + ' WHERE key = ?';
                 const encodedPrimaryKey = Key.encode(primaryKey);
                 CFG.DEBUG && console.log(sql, encoded, key, primaryKey, encodedPrimaryKey);
@@ -549,7 +549,7 @@ IDBCursor.prototype['delete'] = function () {
         me.__find(undefined, undefined, tx, function (key, value, primaryKey) {
             const sql = 'DELETE FROM  ' + util.escapeStore(me.__store.name) + ' WHERE key = ?';
             CFG.DEBUG && console.log(sql, key, primaryKey);
-            Key.convertValueToKey(primaryKey);
+            primaryKey = Key.convertValueToKey(primaryKey);
             tx.executeSql(sql, [Key.encode(primaryKey)], function (tx, data) {
                 if (data.rowsAffected === 1) {
                     me.__store.__cursors.forEach((cursor) => {

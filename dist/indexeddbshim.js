@@ -10062,17 +10062,17 @@ IDBCursor.prototype.__findBasic = function (key, primaryKey, tx, success, error,
 
     if (primaryKey !== undefined) {
         sql.push('AND', quotedKey, op + '= ?');
-        // Key.convertValueToKey(primaryKey); // Already checked by `continuePrimaryKey`
+        // primaryKey = Key.convertValueToKey(primaryKey); // Already checked by `continuePrimaryKey`
         sqlValues.push(_Key2.default.encode(primaryKey));
     }
     if (key !== undefined) {
         sql.push('AND', quotedKeyColumnName, op + '= ?');
-        _Key2.default.convertValueToKey(key);
+        key = _Key2.default.convertValueToKey(key);
         sqlValues.push(_Key2.default.encode(key));
     } else if (continueCall && me.__key !== undefined) {
         sql.push('AND', quotedKeyColumnName, op + ' ?');
-        _Key2.default.convertValueToKey(me.__key);
-        sqlValues.push(_Key2.default.encode(me.__key));
+        var k = _Key2.default.convertValueToKey(me.__key);
+        sqlValues.push(_Key2.default.encode(k));
     }
 
     if (!me.__count) {
@@ -10143,17 +10143,17 @@ IDBCursor.prototype.__findMultiEntry = function (key, primaryKey, tx, success, e
 
     if (primaryKey !== undefined) {
         sql.push('AND', quotedKey, op + '= ?');
-        // Key.convertValueToKey(primaryKey); // Already checked by `continuePrimaryKey`
+        // primaryKey = Key.convertValueToKey(primaryKey); // Already checked by `continuePrimaryKey`
         sqlValues.push(_Key2.default.encode(primaryKey));
     }
     if (key !== undefined) {
         sql.push('AND', quotedKeyColumnName, op + '= ?');
-        _Key2.default.convertValueToKey(key);
+        key = _Key2.default.convertValueToKey(key);
         sqlValues.push(_Key2.default.encode(key));
     } else if (me.__key !== undefined) {
         sql.push('AND', quotedKeyColumnName, op + ' ?');
-        _Key2.default.convertValueToKey(me.__key);
-        sqlValues.push(_Key2.default.encode(me.__key));
+        var k = _Key2.default.convertValueToKey(me.__key);
+        sqlValues.push(_Key2.default.encode(k));
     }
 
     if (!me.__count) {
@@ -10321,7 +10321,7 @@ IDBCursor.prototype.__continue = function (key, advanceContinue) {
     if (!me.__gotValue && !advanceContinue) {
         throw (0, _DOMException.createDOMException)('InvalidStateError', 'The cursor is being iterated or has iterated past its end.');
     }
-    if (key !== undefined) _Key2.default.convertValueToKey(key);
+    if (key !== undefined) key = _Key2.default.convertValueToKey(key);
 
     if (key !== undefined) {
         var cmpResult = (0, _IDBFactory.cmp)(key, me.key);
@@ -10407,8 +10407,8 @@ IDBCursor.prototype.continuePrimaryKey = function (key, primaryKey) {
     if (!me.__gotValue) {
         throw (0, _DOMException.createDOMException)('InvalidStateError', 'The cursor is being iterated or has iterated past its end.');
     }
-    _Key2.default.convertValueToKey(key);
-    _Key2.default.convertValueToKey(primaryKey);
+    key = _Key2.default.convertValueToKey(key);
+    primaryKey = _Key2.default.convertValueToKey(primaryKey);
 
     var cmpResult = (0, _IDBFactory.cmp)(key, me.key);
     if (me.direction === 'next' && cmpResult === -1 || me.direction === 'prev' && cmpResult === 1) {
@@ -10473,7 +10473,7 @@ IDBCursor.prototype.update = function (valueToUpdate) {
             var value = _Sca2.default.decode(encoded);
             _Sca2.default.encode(value, function (encoded) {
                 // First try to delete if the record exists
-                _Key2.default.convertValueToKey(primaryKey);
+                primaryKey = _Key2.default.convertValueToKey(primaryKey);
                 var sql = 'DELETE FROM ' + util.escapeStore(store.name) + ' WHERE key = ?';
                 var encodedPrimaryKey = _Key2.default.encode(primaryKey);
                 _CFG2.default.DEBUG && console.log(sql, encoded, key, primaryKey, encodedPrimaryKey);
@@ -10513,7 +10513,7 @@ IDBCursor.prototype['delete'] = function () {
         me.__find(undefined, undefined, tx, function (key, value, primaryKey) {
             var sql = 'DELETE FROM  ' + util.escapeStore(me.__store.name) + ' WHERE key = ?';
             _CFG2.default.DEBUG && console.log(sql, key, primaryKey);
-            _Key2.default.convertValueToKey(primaryKey);
+            primaryKey = _Key2.default.convertValueToKey(primaryKey);
             tx.executeSql(sql, [_Key2.default.encode(primaryKey)], function (tx, data) {
                 if (data.rowsAffected === 1) {
                     me.__store.__cursors.forEach(function (cursor) {
@@ -11153,8 +11153,8 @@ function cmp(key1, key2) {
         throw new TypeError('You must provide two keys to be compared');
     }
 
-    _Key2.default.convertValueToKey(key1);
-    _Key2.default.convertValueToKey(key2);
+    key1 = _Key2.default.convertValueToKey(key1);
+    key2 = _Key2.default.convertValueToKey(key2);
     var encodedKey1 = _Key2.default.encode(key1);
     var encodedKey2 = _Key2.default.encode(key2);
     var result = encodedKey1 > encodedKey2 ? 1 : encodedKey1 === encodedKey2 ? 0 : -1;
@@ -11651,7 +11651,7 @@ function executeFetchIndexData(unboundedDisallowed, count, index, hasKey, encode
         var recordCount = 0;
         var record = null;
         var decode = opType === 'count' ? function () {} : opType === 'key' ? function (record) {
-            // Key.convertValueToKey(record.key); // Already validated before storage
+            // const k = Key.convertValueToKey(record.key); // Already validated before storage
             return _Key2.default.decode(record.key);
         } : function (record) {
             // when opType is value
@@ -11776,10 +11776,10 @@ function IDBKeyRange(lower, upper, lowerOpen, upperOpen) {
         throw new TypeError('Both arguments to the key range method cannot be undefined');
     }
     if (lower !== undefined) {
-        _Key2.default.convertValueToKey(lower);
+        lower = _Key2.default.convertValueToKey(lower);
     }
     if (upper !== undefined) {
-        _Key2.default.convertValueToKey(upper);
+        upper = _Key2.default.convertValueToKey(upper);
     }
     if (lower !== undefined && upper !== undefined && lower !== upper) {
         if (_Key2.default.encode(lower) > _Key2.default.encode(upper)) {
@@ -11793,7 +11793,7 @@ function IDBKeyRange(lower, upper, lowerOpen, upperOpen) {
     this.__upperOpen = !!upperOpen;
 }
 IDBKeyRange.prototype.includes = function (key) {
-    _Key2.default.convertValueToKey(key);
+    key = _Key2.default.convertValueToKey(key);
     return _Key2.default.isKeyInRange(key, this);
 };
 
@@ -12037,7 +12037,7 @@ IDBObjectStore.prototype.__validateKeyAndValue = function (value, key) {
             }
             throw (0, _DOMException.createDOMException)('DataError', 'Could not evaluate a key from keyPath');
         }
-        _Key2.default.convertValueToKey(key);
+        key = _Key2.default.convertValueToKey(key);
     } else {
         if (key === undefined) {
             if (this.autoIncrement) {
@@ -12046,7 +12046,7 @@ IDBObjectStore.prototype.__validateKeyAndValue = function (value, key) {
             }
             throw (0, _DOMException.createDOMException)('DataError', 'The object store uses out-of-line keys and has no key generator and the key parameter was not provided. ', this);
         }
-        _Key2.default.convertValueToKey(key);
+        key = _Key2.default.convertValueToKey(key);
         util.throwIfNotClonable(value, 'The data to be stored could not be cloned by the internal structured cloning algorithm.');
     }
 
@@ -12162,7 +12162,7 @@ IDBObjectStore.prototype.__insertData = function (tx, encoded, value, primaryKey
         var sqlEnd = [' VALUES ('];
         var insertSqlValues = [];
         if (primaryKey !== undefined) {
-            _Key2.default.convertValueToKey(primaryKey);
+            primaryKey = _Key2.default.convertValueToKey(primaryKey);
             sqlStart.push(util.quote('key'), ',');
             sqlEnd.push('?,');
             insertSqlValues.push(_Key2.default.encode(primaryKey));
@@ -12293,7 +12293,7 @@ IDBObjectStore.prototype.put = function (value, key) {
             me.__deriveKey(tx, value, key, function (primaryKey, useNewForAutoInc) {
                 _Sca2.default.encode(value, function (encoded) {
                     // First try to delete if the record exists
-                    _Key2.default.convertValueToKey(primaryKey);
+                    primaryKey = _Key2.default.convertValueToKey(primaryKey);
                     var sql = 'DELETE FROM ' + util.escapeStore(me.name) + ' WHERE key = ?';
                     var encodedPrimaryKey = _Key2.default.encode(primaryKey);
                     tx.executeSql(sql, [encodedPrimaryKey], function (tx, data) {
@@ -12358,7 +12358,7 @@ IDBObjectStore.prototype.__get = function (range, getKey, getAll, count) {
                 ret = [];
                 if (getKey) {
                     for (var i = 0; i < data.rows.length; i++) {
-                        // Key.convertValueToKey(data.rows.item(i).key); // Already validated before storage
+                        // const k = Key.convertValueToKey(data.rows.item(i).key); // Already validated before storage
                         ret.push(_Key2.default.decode(data.rows.item(i).key, false));
                     }
                 } else {
@@ -12492,7 +12492,7 @@ IDBObjectStore.prototype.count = function (key) {
 
             // key is optional
             if (hasKey) {
-                _Key2.default.convertValueToKey(key);
+                key = _Key2.default.convertValueToKey(key);
             }
 
             return {
@@ -14561,7 +14561,7 @@ function removeInlineCompoundKey(value) {
 
 function encodeCompoundKey(key) {
     // Validate and encode the key
-    _Key2.default.convertValueToKey(key);
+    key = _Key2.default.convertValueToKey(key);
     key = _Key2.default.encode(key);
 
     // Prepend the "__$$compoundKey." prefix

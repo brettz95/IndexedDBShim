@@ -369,7 +369,7 @@ function executeFetchIndexData (unboundedDisallowed, count, index, hasKey, encod
         let recordCount = 0;
         let record = null;
         const decode = opType === 'count' ? () => {} : opType === 'key' ? (record) => {
-            // Key.convertValueToKey(record.key); // Already validated before storage
+            // const k = Key.convertValueToKey(record.key); // Already validated before storage
             return Key.decode(record.key);
         } : (record) => { // when opType is value
             return Sca.decode(record.value);

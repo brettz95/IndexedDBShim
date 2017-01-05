@@ -35,7 +35,7 @@ window.onerror = function () {
             'IDBCursor.delete.js',
             'IDBCursor.update.js',
             'IDBCursorBehavior.js',
-            'IDBDatabase.close.js',
+            // 'IDBDatabase.close.js',
             'IDBDatabase.createObjectStore.js',
             'IDBDatabase.deleteObjectStore.js',
             'IDBDatabase.transaction.js',
@@ -49,10 +49,10 @@ window.onerror = function () {
             'IDBIndex.multiEntry.js',
             'IDBIndex.openKeyCursor.js',
             'IDBKeyRange.js',
-            'IDBObjectStore.add.js', // Cyclic
+            // 'IDBObjectStore.add.js', // Cyclic
             'IDBObjectStore.clear.js',
             'IDBObjectStore.count.js',
-            'IDBObjectStore.createIndex.js',
+            // 'IDBObjectStore.createIndex.js',
             'IDBObjectStore.delete.js',
             'IDBObjectStore.deleteIndex.js',
             'IDBObjectStore.get.js',
@@ -66,7 +66,7 @@ window.onerror = function () {
             'KeyPath.js',
             'KeyValidity.js',
             'RequestBehavior.js',
-            'TransactionBehavior.js'
+            // 'TransactionBehavior.js'
         ];
     }
 

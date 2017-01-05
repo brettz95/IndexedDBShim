@@ -303,7 +303,7 @@ function removeInlineCompoundKey (value) {
 
 function encodeCompoundKey (key) {
     // Validate and encode the key
-    Key.convertValueToKey(key);
+    key = Key.convertValueToKey(key);
     key = Key.encode(key);
 
     // Prepend the "__$$compoundKey." prefix
