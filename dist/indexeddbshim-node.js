@@ -18346,7 +18346,7 @@ IDBIndex.__clone = function (index, store) {
             unique: index.unique
         }
     });
-    // idx.__deleted = index.__deleted;
+    idx.__deleted = index.__deleted;
     return idx;
 };
 
@@ -18360,6 +18360,15 @@ IDBIndex.__clone = function (index, store) {
 IDBIndex.__createIndex = function (store, index) {
     var idx = store.__indexes[index.name];
     var columnExists = idx && idx.__deleted;
+
+    // If recreating, change flag for old clones
+    var storeClone = store.transaction.__storeClones[store.name];
+    if (storeClone) {
+        var scIndex = storeClone.__indexes[index.name];
+        if (scIndex) {
+            scIndex.__deleted = false;
+        }
+    }
 
     // Add the index to the IDBObjectStore
     index.__pending = true;
@@ -18437,6 +18446,10 @@ IDBIndex.__deleteIndex = function (store, index) {
     // Remove the index from the IDBObjectStore
     store.__indexes[index.name].__deleted = true;
     store.indexNames.splice(store.indexNames.indexOf(index.name), 1);
+    var storeClone = store.transaction.__storeClones[store.name];
+    if (storeClone) {
+        delete storeClone.__indexes[index.name];
+    }
 
     // Remove the index in WebSQL
     var transaction = store.transaction;
@@ -18882,6 +18895,8 @@ Object.defineProperty(exports, "__esModule", {
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
 var _DOMException = require('./DOMException.js');
 
 var _IDBCursor = require('./IDBCursor.js');
@@ -18969,7 +18984,15 @@ IDBObjectStore.__clone = function (store, transaction) {
         cursors: store.__cursors
     }, transaction);
 
-    newStore.__indexes = store.__indexes;
+    newStore.__indexes = {};
+    Object.entries(store.__indexes).forEach(function (_ref) {
+        var _ref2 = _slicedToArray(_ref, 2),
+            idxName = _ref2[0],
+            idx = _ref2[1];
+
+        newStore.__indexes[idxName] = _IDBIndex.IDBIndex.__clone(idx, store);
+    });
+    newStore.__deleted = store.__deleted;
     newStore.__indexNames = store.indexNames;
     newStore.__oldIndexNames = store.__oldIndexNames;
     return newStore;
@@ -18982,13 +19005,19 @@ IDBObjectStore.__clone = function (store, transaction) {
  * @protected
  */
 IDBObjectStore.__createObjectStore = function (db, store) {
+    // Add the object store to WebSQL
+    var transaction = db.__versionTransaction;
+    _IDBTransaction2.default.__assertVersionChange(transaction);
+
     // Add the object store to the IDBDatabase
     db.__objectStores[store.name] = store;
     db.objectStoreNames.push(store.name);
 
-    // Add the object store to WebSQL
-    var transaction = db.__versionTransaction;
-    _IDBTransaction2.default.__assertVersionChange(transaction);
+    // If recreating, change flag for old clones
+    var storeClone = transaction.__storeClones[store.name];
+    if (storeClone) {
+        storeClone.__deleted = false;
+    }
 
     transaction.__addNonRequestToTransactionQueue(function createObjectStore(tx, args, success, failure) {
         function error(tx, err) {
@@ -19014,21 +19043,21 @@ IDBObjectStore.__createObjectStore = function (db, store) {
  * @protected
  */
 IDBObjectStore.__deleteObjectStore = function (db, store) {
+    // Remove the object store from WebSQL
+    var transaction = db.__versionTransaction;
+    _IDBTransaction2.default.__assertVersionChange(transaction);
+
     // Remove the object store from the IDBDatabase
     store.__deleted = true;
     db.__objectStores[store.name] = undefined;
     db.objectStoreNames.splice(db.objectStoreNames.indexOf(store.name), 1);
 
-    var storeClone = db.__versionTransaction.__storeClones[store.name];
+    var storeClone = transaction.__storeClones[store.name];
     if (storeClone) {
         storeClone.__indexNames = new util.StringList();
         storeClone.__indexes = {};
         storeClone.__deleted = true;
     }
-
-    // Remove the object store from WebSQL
-    var transaction = db.__versionTransaction;
-    _IDBTransaction2.default.__assertVersionChange(transaction);
 
     transaction.__addNonRequestToTransactionQueue(function deleteObjectStore(tx, args, success, failure) {
         function error(tx, err) {

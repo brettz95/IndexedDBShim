@@ -41,7 +41,7 @@ IDBIndex.__clone = function (index, store) {
             unique: index.unique
         }
     });
-    // idx.__deleted = index.__deleted;
+    idx.__deleted = index.__deleted;
     return idx;
 };
 
@@ -55,6 +55,15 @@ IDBIndex.__clone = function (index, store) {
 IDBIndex.__createIndex = function (store, index) {
     const idx = store.__indexes[index.name];
     const columnExists = idx && idx.__deleted;
+
+    // If recreating, change flag for old clones
+    const storeClone = store.transaction.__storeClones[store.name];
+    if (storeClone) {
+        const scIndex = storeClone.__indexes[index.name];
+        if (scIndex) {
+            scIndex.__deleted = false;
+        }
+    }
 
     // Add the index to the IDBObjectStore
     index.__pending = true;
@@ -140,6 +149,10 @@ IDBIndex.__deleteIndex = function (store, index) {
     // Remove the index from the IDBObjectStore
     store.__indexes[index.name].__deleted = true;
     store.indexNames.splice(store.indexNames.indexOf(index.name), 1);
+    const storeClone = store.transaction.__storeClones[store.name];
+    if (storeClone) {
+        delete storeClone.__indexes[index.name];
+    }
 
     // Remove the index in WebSQL
     const transaction = store.transaction;

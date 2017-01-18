@@ -58,7 +58,11 @@ IDBObjectStore.__clone = function (store, transaction) {
         cursors: store.__cursors
     }, transaction);
 
-    newStore.__indexes = store.__indexes;
+    newStore.__indexes = {};
+    Object.entries(store.__indexes).forEach(([idxName, idx]) => {
+        newStore.__indexes[idxName] = IDBIndex.__clone(idx, store);
+    });
+    newStore.__deleted = store.__deleted;
     newStore.__indexNames = store.indexNames;
     newStore.__oldIndexNames = store.__oldIndexNames;
     return newStore;
@@ -71,13 +75,19 @@ IDBObjectStore.__clone = function (store, transaction) {
  * @protected
  */
 IDBObjectStore.__createObjectStore = function (db, store) {
+    // Add the object store to WebSQL
+    const transaction = db.__versionTransaction;
+    IDBTransaction.__assertVersionChange(transaction);
+
     // Add the object store to the IDBDatabase
     db.__objectStores[store.name] = store;
     db.objectStoreNames.push(store.name);
 
-    // Add the object store to WebSQL
-    const transaction = db.__versionTransaction;
-    IDBTransaction.__assertVersionChange(transaction);
+    // If recreating, change flag for old clones
+    const storeClone = transaction.__storeClones[store.name];
+    if (storeClone) {
+        storeClone.__deleted = false;
+    }
 
     transaction.__addNonRequestToTransactionQueue(function createObjectStore (tx, args, success, failure) {
         function error (tx, err) {
@@ -103,21 +113,21 @@ IDBObjectStore.__createObjectStore = function (db, store) {
  * @protected
  */
 IDBObjectStore.__deleteObjectStore = function (db, store) {
+    // Remove the object store from WebSQL
+    const transaction = db.__versionTransaction;
+    IDBTransaction.__assertVersionChange(transaction);
+
     // Remove the object store from the IDBDatabase
     store.__deleted = true;
     db.__objectStores[store.name] = undefined;
     db.objectStoreNames.splice(db.objectStoreNames.indexOf(store.name), 1);
 
-    const storeClone = db.__versionTransaction.__storeClones[store.name];
+    const storeClone = transaction.__storeClones[store.name];
     if (storeClone) {
         storeClone.__indexNames = new util.StringList();
         storeClone.__indexes = {};
         storeClone.__deleted = true;
     }
-
-    // Remove the object store from WebSQL
-    const transaction = db.__versionTransaction;
-    IDBTransaction.__assertVersionChange(transaction);
 
     transaction.__addNonRequestToTransactionQueue(function deleteObjectStore (tx, args, success, failure) {
         function error (tx, err) {

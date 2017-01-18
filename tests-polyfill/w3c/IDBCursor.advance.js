@@ -67,7 +67,11 @@ describe('W3C IDBCursor.advance Tests', function () {
 
         it("continue", function (done) {
             var count = 0;
-            var rq = db.transaction("test").objectStore("test").index("index").openCursor();
+            console.log('aaa: 000')
+            var iii = db.transaction("test").objectStore("test").index("index");
+            console.log('aaa: 111')
+            var rq = iii.openCursor();
+            console.log('aaa: 222')
 
             rq.onsuccess = function(e) {
                 if (!e.target.result) {
